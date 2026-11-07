@@ -85,3 +85,43 @@ func operacaoR(f3, f7 uint32) (operacao, bool) {
 	}
 	return 0, false
 }
+
+/* 
+
+Descobre qual operação da ULA uma intrução tipo-I aritmética/lógica (opcode 0010011) pede.
+
+Parâmetros:
+	f3: campo funct3 da instrução (bits 14:12)
+	f7: campo funct7 da instrução (bits 31:25); só importa nos shifts
+
+Retorna a operação e um bool: true se a combinação é válida, false se a instrução não existe (para não executar nada errado).
+*/
+func operacaoI(f3, f7 uint32) (operacao, bool) {
+	// O funct3 escolhe o grupo da operação.
+	switch f3 {
+	case 0x0:
+		return opAdd, true
+	case 0x1: 
+		if f7 == 0x00 {
+			return opSll, true
+		}
+	case 0x2:
+		return opSlt, true
+	case 0x3:
+		return opSltu, true
+	case 0x4:
+		return opXor, true
+	case 0x5:
+		if f7 == 0x20 {
+			return opSra, true
+		}
+		if f7 == 0x00 {
+			return opSrl, true
+		}
+	case 0x6:
+		return opOr, true
+	case 0x7:
+		return opAnd, true
+	}
+	return 0, false
+}

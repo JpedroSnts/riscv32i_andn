@@ -30,6 +30,12 @@ func (c * CPU) Step() {
 			res := ula(op, c.Regs[r.rs1], c.Regs[r.rs2])
 			c.write(r.rd, res)
 		}
+	case 0x13: // Tipo-I aritmético/lógico
+		op, ok := operacaoR(funct3(inst), funct7(inst))
+		if ok {
+			res := ula(op, c.Regs[rs1(inst)], uint32(immI(inst)))
+			c.write(rd(inst), res)
+		}
 	}
 
 	c.PC = nextPC
