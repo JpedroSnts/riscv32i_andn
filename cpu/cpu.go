@@ -36,6 +36,18 @@ func (c * CPU) Step() {
 			res := ula(op, c.Regs[rs1(inst)], uint32(immI(inst)))
 			c.write(rd(inst), res)
 		}
+	case 0x03: // LW (Tipo-I): rd = MEM[rs1 + imm]
+		if funct3(inst) == 0x2 {
+			addr:= c.Regs[rs1(inst)] + uint32(immI(inst))
+			c.write(rd(inst), c.Barramento.Read32(addr))
+		}
+	case 0x23: // SW (Tipo-S): MEM[rs1 + imm] = rs2
+		if funct3(inst) == 0x2 {
+			addr := c.Regs[rs1(inst)] + uint32(immS(inst))
+			c.Barramento.Write32(addr, c.Regs[(inst)])
+		}
+
+
 	}
 
 	c.PC = nextPC
