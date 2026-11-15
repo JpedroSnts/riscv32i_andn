@@ -7,10 +7,13 @@ import (
 )
 
 func main() {
-	// RAM principal: começa em 0x00000 e tem 512 KB (0x80000 bytes).
-	ram := mem.NovaRAM(0x00000, 0x80000)
+	// Mapa de memória do enunciado: RAM, VRAM, reservada e periféricos.
+	mapa, err := mem.NovoMapaPadrao()
+	if err != nil {
+		fmt.Println("erro ao montar o mapa:", err)
+		return
+	}
 
-	// Programa DEMO (palavras de 32 bits).
 	programa := []uint32{
 		0x00C00093, // addi x1, x0, 12
 		0x00A00113, // addi x2, x0, 10
@@ -18,30 +21,41 @@ func main() {
 		0x10000213, // addi x4, x0, 256
 		0x00322023, // sw   x3, 0(x4)
 		0x00022283, // lw   x5, 0(x4)
+		0x00100313, // addi x6, x0, 1
+		0x01331313, // slli x6, x6, 19     (x6 = 0x80000, início da VRAM)
+		0x04800393, // addi x7, x0, 72     (72 = 'H' em ASCII)
+		0x00732023, // sw   x7, 0(x6)      (escreve na VRAM)
 	}
-
-	if err := ram.Load(0, programa); err != nil {
+	if err := mapa.Carregar(0, programa); err != nil {
 		fmt.Println("erro ao carregar o programa:", err)
 		return
 	}
 
-	// A CPU usa a RAM como barramento.
-	processador := cpu.New(ram)
+	// A CPU usa o mapa como barramento.
+	processador := cpu.New(mapa)
 
-	// Executa uma instrução por vez, num limite fixo de passos.
-	// Aqui o limite é o tamanho do programa, que só funciona porque ele não tem desvios. Com branches, será preciso outra condição de parada.
+	// Limite fixo de passos: o tamanho do programa (ele não tem desvios).
 	for n := 0; n < len(programa); n++ {
 		if err := processador.Step(); err != nil {
 			fmt.Println("erro na CPU:", err)
 			return
 		}
 	}
-	
-	// Confere os resultados.
-	guardado, _ := ram.Read32(256)
-	fmt.Println("x1 =", processador.Regs[1], "(esperado 12)")
-	fmt.Println("x2 =", processador.Regs[2], "(esperado 10)")
+
 	fmt.Println("x3 =", processador.Regs[3], "(esperado 4, resultado do andn)")
-	fmt.Println("MEM[256] =", guardado, "(esperado 4, gravado pelo sw)")
-	fmt.Println("x5 =", processador.Regs[5], "(esperado 4, lido pelo lw)")
+	fmt.Println("x5 =", processador.Regs[5], "(esperado 4, lido da RAM)")
+
+	vram, _ := mapa.Read32(0x80000)
+	fmt.Println("VRAM[0x80000] =", vram, "(esperado 72, gravado pelo sw)")
+
+	// Testes das regiões especiais.
+	if _, err := mapa.Read32(0x90000); err != nil {
+		fmt.Println("região reservada:", err)
+	}
+	if _, err := mapa.Read32(0x9FC00); err == nil {
+		fmt.Println("periféricos: acesso permitido")
+	}
+	if _, err := mapa.Read32(0xA0000); err != nil {
+		fmt.Println("fora do mapa:", err)
+	}
 }
