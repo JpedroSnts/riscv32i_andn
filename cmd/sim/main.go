@@ -5,6 +5,7 @@ import (
 	"riscv/cpu"
 	"riscv/mem"
 	"riscv/barramento"
+	"riscv/video"
 )
 
 func main() {
@@ -26,6 +27,8 @@ func main() {
 		0x01331313, // slli x6, x6, 19     (x6 = 0x80000, início da VRAM)
 		0x04800393, // addi x7, x0, 72     (72 = 'H' em ASCII)
 		0x00732023, // sw   x7, 0(x6)      (escreve na VRAM)
+		0x04900393, // addi x7, x0, 73     (73 = 'I' em ASCII)
+		0x00732223, // sw   x7, 4(x6)      (próxima posição da VRAM)
 	}
 	if err := mapa.Carregar(0, programa); err != nil {
 		fmt.Println("erro ao carregar o programa:", err)
@@ -36,14 +39,22 @@ func main() {
 	sistema := barramento.NovoSistema(mapa)
 	processador := cpu.New(sistema)
 
-	// Limite fixo de passos: o tamanho do programa (ele não tem desvios).
-	for n := 0; n < len(programa); n++ {
+	// A cada intervaloTela instruções, a VRAM é mostrada no terminal.
+	const intervaloTela = 4
+
+	for n := 1; n <= len(programa); n++ {
 		if err := processador.Step(); err != nil {
 			fmt.Println("erro na CPU:", err)
 			return
 		}
+		if n%intervaloTela == 0 {
+			fmt.Printf("--- tela após %d instruções ---\n", n)
+			video.Mostrar(mapa)
+		}
 	}
-	
+
+	fmt.Println("--- tela final ---")
+	video.Mostrar(mapa)
 	// Estado das linhas depois do último acesso (o sw na VRAM).
 	fmt.Printf("barramento: endereço=%#x dados=%d controle=%v\n",sistema.Endereco, sistema.Dados, sistema.Controle)
 
