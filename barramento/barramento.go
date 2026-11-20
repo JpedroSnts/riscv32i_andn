@@ -4,6 +4,8 @@ package barramento
 // Se o acesso falhar (endereço inexistente, fora do limite etc.),
 // as funções devolvem um erro em vez de um valor inventado.
 type Barramento interface {
-	Read32(addr uint32) (uint32, error)
-	Write32(addr uint32, val uint32) error
+	Read32(endereco uint32) (uint32, error)
+	Write32(endereco uint32, valor uint32) error
 }
+
+
