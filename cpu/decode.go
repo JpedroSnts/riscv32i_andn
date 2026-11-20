@@ -17,10 +17,11 @@ func immS(i uint32) int32 {
 	return (int32(i) >>25)<<5 | int32((i>>7) &0x1F)
 }
 
-func immB (i uint32) int32 {
-	return (int32 (i)>> 31 <<12)|
-	int32 ((i>>25)&0x3F)<<5 |
-	int32((i>>8)&0xF)<<1
+func immB(i uint32) int32 {
+	return (int32(i)>>31)<<12 | 
+		int32((i>>7)&0x1)<<11 | 
+		int32((i>>25)&0x3F)<<5 |
+		int32((i>>8)&0xF)<<1 
 }
 
 type instrR struct {

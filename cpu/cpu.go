@@ -9,6 +9,7 @@ type CPU struct {
 	Regs[32] uint32
 	PC uint32
 	Barramento barramento.Barramento
+	Parou bool // vira true quando a CPU executa EBREAK (fim do programa)
 }
 
 func New(b barramento.Barramento) * CPU {
@@ -90,6 +91,12 @@ func (c *CPU) Step() error {
 		if desvio {
 			nextPC = c.PC + uint32(immB(inst))
 		}
+	case 0x73: // EBREAK: fim do programa
+		if inst != 0x00100073 { // só o ebreak é aceito; ecall e outras dão erro
+			return c.invalida(inst)
+		}
+		c.Parou = true
+		return nil // o PC não avança, fica apontando para o ebreak
 
 	default: // opcode que não implementamos
 		return c.invalida(inst)
