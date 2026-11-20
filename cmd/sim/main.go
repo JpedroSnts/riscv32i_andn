@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"riscv/cpu"
 	"riscv/mem"
+	"riscv/barramento"
 )
 
 func main() {
@@ -31,8 +32,9 @@ func main() {
 		return
 	}
 
-	// A CPU usa o mapa como barramento.
-	processador := cpu.New(mapa)
+	// O barramento fica entre a CPU e o mapa de memória.
+	sistema := barramento.NovoSistema(mapa)
+	processador := cpu.New(sistema)
 
 	// Limite fixo de passos: o tamanho do programa (ele não tem desvios).
 	for n := 0; n < len(programa); n++ {
@@ -41,6 +43,9 @@ func main() {
 			return
 		}
 	}
+	
+	// Estado das linhas depois do último acesso (o sw na VRAM).
+	fmt.Printf("barramento: endereço=%#x dados=%d controle=%v\n",sistema.Endereco, sistema.Dados, sistema.Controle)
 
 	fmt.Println("x3 =", processador.Regs[3], "(esperado 4, resultado do andn)")
 	fmt.Println("x5 =", processador.Regs[5], "(esperado 4, lido da RAM)")
