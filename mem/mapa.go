@@ -20,7 +20,7 @@ type Mapa struct {
 }
 
 // Adicionar registra uma região. Recusa se ela se sobrepuser a outra.
-func (m *Mapa) adicionar(nome string, base, tamanho uint32, dispositivo barramento.Barramento) error {
+func (m *Mapa) Adicionar(nome string, base, tamanho uint32, dispositivo barramento.Barramento) error {
 	fim := base + tamanho // primeiro endereço depois da região
 	for _, r := range m.regioes {
 		if base < r.base + r.tamanho && r.base < fim {
@@ -68,7 +68,7 @@ func (m *Mapa) Write32(endereco uint32, valor uint32) error {
 }
 
 // Carregar coloca um programa a partir do endereço, uma instrução a cada 4 bytes.
-func (m *Mapa) Carregar(endereco uint32, programa []uint32) error {
+func (m *Mapa) Load(endereco uint32, programa []uint32) error {
 	for n, instrucao := range programa {
 		if err := m.Write32(endereco+uint32(n)*4, instrucao); err != nil {
 			return err
@@ -92,7 +92,7 @@ func NovoMapaPadrao() (*Mapa, error) {
 
 	// r é cada linha da tabela, registrada no mapa uma por uma.
 	for _, r := range tabela {
-		if err := m.adicionar(r.nome, r.base, r.tamanho, r.dispositivo); err != nil {
+		if err := m.Adicionar(r.nome, r.base, r.tamanho, r.dispositivo); err != nil {
 			return nil, err
 		}
 	}

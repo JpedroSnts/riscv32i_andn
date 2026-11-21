@@ -35,7 +35,7 @@ func main() {
 		0xFE0416E3, // bne  x8, x0, -20     se x8 != 0, volta ao andn
 		0x00100073, // ebreak               fim do programa
 	}
-	if err := mapa.Carregar(0, programa); err != nil {
+	if err := mapa.Load(0, programa); err != nil {
 		fmt.Println("erro ao carregar o programa:", err)
 		return
 	}
