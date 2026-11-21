@@ -13,9 +13,10 @@ const (
 	Linhas  = 10      // quantidade de linhas
 )
 
-// Lê a VRAM e imprime no terminal os caracteres ASCII dela.
-func Mostrar(memoria barramento.Barramento) error {
-	var tela strings.Builder // monta o texto todo antes de imprimir
+// Montar lê a VRAM e devolve o texto da tela, com borda, pronto para imprimir.
+// memoria é quem permite ler a VRAM (o mapa de memória).
+func Montar(memoria barramento.Barramento) (string, error) {
+	var tela strings.Builder // monta o texto todo antes de devolver
 
 	borda := "+" + strings.Repeat("-", Colunas) + "+\n"
 	tela.WriteString(borda)
@@ -27,7 +28,7 @@ func Mostrar(memoria barramento.Barramento) error {
 			endereco := uint32(Base + (linha*Colunas+coluna)*4)
 			palavra, err := memoria.Read32(endereco)
 			if err != nil {
-				return err
+				return "", err
 			}
 
 			// só o byte menor é o caractere; o que não for imprimível vira espaço
@@ -41,6 +42,15 @@ func Mostrar(memoria barramento.Barramento) error {
 	}
 
 	tela.WriteString(borda)
-	fmt.Print(tela.String())
+	return tela.String(), nil
+}
+
+// Desenhar monta a tela e a imprime no terminal.
+func Desenhar(memoria barramento.Barramento) error {
+	tela, err := Montar(memoria)
+	if err != nil {
+		return err
+	}
+	fmt.Print(tela)
 	return nil
 }
