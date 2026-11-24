@@ -31,4 +31,5 @@ func main() {
 	fmt.Println("x8 =", sim.CPU.Regs[8], "(esperado 0, o contador do laço)")
 	fmt.Printf("barramento: endereço=%#x dados=%d controle=%v\n",
 		sim.Barramento.Endereco, sim.Barramento.Dados, sim.Barramento.Controle)
+	fmt.Printf("cache: %d hits, %d misses\n", sim.Cache.Hits, sim.Cache.Misses)
 }

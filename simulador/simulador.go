@@ -3,14 +3,16 @@ package simulador
 import (
 	"fmt"
 	"riscv/barramento"
+	"riscv/cache"
 	"riscv/cpu"
 	"riscv/mem"
 )
 
 // Simulador junta as peças: mapa de memória, barramento e CPU.
 type Simulador struct {
-	Mapa       *mem.Mapa  // memória e dispositivos
+	Mapa       *mem.Mapa           // memória e dispositivos
 	Barramento *barramento.Sistema // linhas de endereço, dados e controle
+	Cache      *cache.Cache        // fica entre a CPU e o barramento
 	CPU        *cpu.CPU
 }
 
@@ -24,9 +26,13 @@ func Novo(programa []uint32) (*Simulador, error) {
 		return nil, err
 	}
 
-	// o barramento fica entre a CPU e o mapa de memória
+	// o barramento fica entre a cache e o mapa de memória
 	sistema := barramento.NovoSistema(mapa)
-	return &Simulador{Mapa: mapa, Barramento: sistema, CPU: cpu.New(sistema)}, nil
+
+	// a cache fica entre a CPU e o barramento
+	c := cache.NovaCache(sistema)
+
+	return &Simulador{Mapa: mapa, Barramento: sistema, Cache: c, CPU: cpu.New(c)}, nil
 }
 
 // Executar roda a CPU até o programa terminar (ebreak) ou chegar a limitePassos.
