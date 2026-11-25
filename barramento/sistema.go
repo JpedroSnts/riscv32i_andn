@@ -26,7 +26,13 @@ type Sistema struct {
 	Dados    uint32   // O valor que trafega
 	Controle Controle // Leitura, escrita ou ocioso
 
-	destino Barramento 
+	destino Barramento
+	fontes  []FonteInterrupcao // dispositivos que podem pedir interrupção 
+}
+
+// FonteInterrupcao é um dispositivo que pode pedir uma interrupção à CPU.
+type FonteInterrupcao interface {
+	Interrupcao() bool
 }
 
 // NovoSistema cria o barramento ligado a um destino.
@@ -59,4 +65,21 @@ func (s *Sistema) Write32(endereco uint32, valor uint32) error {
 
 	s.Controle = Ocioso // 5. acesso terminado
 	return err
+}
+
+// AdicionarFonte registra um dispositivo que pode pedir interrupção. Fonte nula é ignorada.
+func (s *Sistema) AdicionarFonte(fonte FonteInterrupcao) {
+	if fonte != nil {
+		s.fontes = append(s.fontes, fonte)
+	}
+}
+
+// Interrupcao é a linha de interrupção: true se algum dispositivo está pedindo. É consultada na hora, porque o estado dos dispositivos muda sozinho.
+func (s *Sistema) Interrupcao() bool {
+	for _, fonte := range s.fontes {
+		if fonte.Interrupcao() {
+			return true
+		}
+	}
+	return false
 }

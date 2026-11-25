@@ -92,3 +92,4 @@ func booleano(b bool) uint32 {
 
 // O compilador confere que o Teclado é um Barramento (pode ser ligado ao mapa).
 var _ barramento.Barramento = (*Teclado)(nil)
+var _ barramento.FonteInterrupcao = (*Teclado)(nil)
