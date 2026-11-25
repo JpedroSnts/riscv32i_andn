@@ -77,17 +77,21 @@ func (m *Mapa) Load(endereco uint32, programa []uint32) error {
 	return nil
 }
 
-// NovoMapaPadrao monta o mapa de memória do enunciado.
+// NovoMapaPadrao monta o mapa de memória do enunciado, com uma RAM simples na região de periféricos.
 func NovoMapaPadrao() (*Mapa, error) {
+	return NovoMapaCom(NovaRAM(0x9FC00, 0x400))
+}
+
+// NovoMapaCom monta o mapa de memória do enunciado com o dispositivo dado na região de periféricos (por exemplo, o teclado).
+func NovoMapaCom(perifericos barramento.Barramento) (*Mapa, error) {
 	m := &Mapa{}
 
-	// Tabela com as quatro regiões do PDF.
 	// Cada linha é: nome, base, tamanho, dispositivo.
 	tabela := []regiao{
 		{"RAM principal", 0x00000, 0x80000, NovaRAM(0x00000, 0x80000)},
 		{"VRAM", 0x80000, 0x10000, NovaRAM(0x80000, 0x10000)},
 		{"Reservada", 0x90000, 0xFC00, nil}, // nil = sem dono, acesso dá erro
-		{"Periféricos", 0x9FC00, 0x400, NovaRAM(0x9FC00, 0x400)},
+		{"Periféricos", 0x9FC00, 0x400, perifericos},
 	}
 
 	// r é cada linha da tabela, registrada no mapa uma por uma.
@@ -98,4 +102,3 @@ func NovoMapaPadrao() (*Mapa, error) {
 	}
 	return m, nil
 }
-

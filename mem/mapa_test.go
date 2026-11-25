@@ -158,3 +158,31 @@ func TestMapaCarregar(t *testing.T) {
 		t.Error("carregar na região reservada deveria dar erro")
 	}
 }
+
+// TestMapaComPerifericos confere que o dispositivo dado ocupa a região de periféricos, e só ela.
+func TestMapaComPerifericos(t *testing.T) {
+	perifericos := NovaRAM(0x9FC00, 0x400)
+	m, err := NovoMapaCom(perifericos)
+	if err != nil {
+		t.Fatalf("erro ao montar o mapa: %v", err)
+	}
+
+	// a escrita em 0x9FC04 chega ao dispositivo
+	if err := m.Write32(0x9FC04, 55); err != nil {
+		t.Fatalf("erro inesperado: %v", err)
+	}
+	if valor, err := perifericos.Read32(0x9FC04); err != nil || valor != 55 {
+		t.Errorf("o dispositivo recebeu %d, %v; esperado 55", valor, err)
+	}
+
+	// as outras regiões continuam donas dos seus endereços
+	if err := m.Write32(0x100, 7); err != nil {
+		t.Fatalf("erro inesperado: %v", err)
+	}
+	if _, err := perifericos.Read32(0x100); err == nil {
+		t.Error("o dispositivo dos periféricos não deveria atender o endereço 0x100")
+	}
+	if _, err := m.Read32(0x90000); err == nil {
+		t.Error("a região reservada deveria continuar recusando acesso")
+	}
+}
