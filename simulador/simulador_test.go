@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"riscv/teclado"
 	"riscv/barramento"
 	"riscv/programas"
 	"riscv/video"
@@ -141,12 +142,73 @@ func TestProgramaInvalido(t *testing.T) {
 	}
 }
 
-// TestProgramaInvadeRegiaoReservada confere que um programa tão grande que
-// passa da RAM e da VRAM e chega na região reservada é recusado.
+// TestProgramaInvadeRegiaoReservada confere que um programa tão grande que passa da RAM e da VRAM e chega na região reservada é recusado.
 func TestProgramaInvadeRegiaoReservada(t *testing.T) {
 	// 0x90000 é o início da região reservada; a palavra de índice 0x90000/4 cai nela
 	grande := make([]uint32, 0x90000/4+1)
 	if _, err := Novo(grande); err == nil {
 		t.Error("deveria recusar um programa que chega na região reservada")
+	}
+}
+
+// TestTecladoNoMapa confere que o teclado responde nos endereços de periféricos
+// e que a linha de interrupção do barramento acompanha o teclado.
+func TestTecladoNoMapa(t *testing.T) {
+	sim, err := Novo([]uint32{0x00100073})
+	if err != nil {
+		t.Fatalf("erro ao montar: %v", err)
+	}
+
+	// as interrupções vêm desligadas: apertar a tecla não interrompe
+	sim.Teclado.Pressionar('i')
+	if sim.Barramento.Interrupcao() {
+		t.Error("com as interrupções desligadas, não deveria haver interrupção")
+	}
+
+	// o programa liga as interrupções escrevendo no CONTROLE, pelo mapa
+	if err := sim.Mapa.Write32(teclado.RegControle, 1); err != nil {
+		t.Fatalf("erro ao escrever no CONTROLE: %v", err)
+	}
+	if !sim.Barramento.Interrupcao() {
+		t.Error("habilitado e com tecla pendente: deveria haver interrupção")
+	}
+
+	// o STATUS mostra a pendência e a leitura da TECLA a limpa
+	if valor, _ := sim.Mapa.Read32(teclado.RegStatus); valor != 1 {
+		t.Errorf("STATUS = %d, esperado 1", valor)
+	}
+	if valor, _ := sim.Mapa.Read32(teclado.RegTecla); valor != 'i' {
+		t.Errorf("TECLA = %d, esperado %d ('i')", valor, 'i')
+	}
+	if sim.Barramento.Interrupcao() {
+		t.Error("depois de ler a TECLA, a interrupção deveria cair")
+	}
+}
+
+// TestTecladoNaoPassaPelaCache confere que a cache não guarda o teclado: o valor muda sozinho, e uma cache devolveria o antigo.
+func TestTecladoNaoPassaPelaCache(t *testing.T) {
+	sim, err := Novo([]uint32{0x00100073})
+	if err != nil {
+		t.Fatalf("erro ao montar: %v", err)
+	}
+
+	antes, _ := sim.Cache.Read32(teclado.RegStatus)
+	sim.Teclado.Pressionar('i')
+	depois, _ := sim.Cache.Read32(teclado.RegStatus)
+
+	if antes != 0 || depois != 1 {
+		t.Errorf("STATUS antes/depois = %d/%d, esperado 0/1", antes, depois)
+	}
+	if sim.Cache.Hits != 0 || sim.Cache.Misses != 0 {
+		t.Errorf("hits/misses = %d/%d, o teclado não deveria contar na cache",
+			sim.Cache.Hits, sim.Cache.Misses)
+	}
+
+	// escrever no CONTROLE pela cache também chega ao teclado
+	if err := sim.Cache.Write32(teclado.RegControle, 1); err != nil {
+		t.Fatalf("erro inesperado: %v", err)
+	}
+	if !sim.Barramento.Interrupcao() {
+		t.Error("a escrita no CONTROLE pela cache deveria ter ligado as interrupções")
 	}
 }

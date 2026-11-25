@@ -6,19 +6,23 @@ import (
 	"riscv/cache"
 	"riscv/cpu"
 	"riscv/mem"
+	"riscv/teclado"
 )
-
 // Simulador junta as peças: mapa de memória, barramento e CPU.
 type Simulador struct {
-	Mapa       *mem.Mapa           // memória e dispositivos
-	Barramento *barramento.Sistema // linhas de endereço, dados e controle
-	Cache      *cache.Cache        // fica entre a CPU e o barramento
+	Mapa       *mem.Mapa // memória e dispositivos
+	Barramento *barramento.Sistema // linhas de endereço, dados, controle e interrupção
+	Cache      *cache.Cache // fica entre a CPU e o barramento
+	Teclado    *teclado.Teclado // o periférico que gera a interrupção
 	CPU        *cpu.CPU
 }
 
 // Novo monta a máquina e carrega o programa a partir do endereço 0.
 func Novo(programa []uint32) (*Simulador, error) {
-	mapa, err := mem.NovoMapaPadrao()
+	// o teclado ocupa a região de periféricos do mapa
+	tec := teclado.Novo()
+
+	mapa, err := mem.NovoMapaCom(tec)
 	if err != nil {
 		return nil, err
 	}
@@ -26,15 +30,15 @@ func Novo(programa []uint32) (*Simulador, error) {
 		return nil, err
 	}
 
-	// o barramento fica entre a cache e o mapa de memória
+	// o barramento fica entre a cache e o mapa de memória, e o teclado pode pedir interrupção por ele
 	sistema := barramento.NovoSistema(mapa)
+	sistema.AdicionarFonte(tec)
 
 	// a cache fica entre a CPU e o barramento
 	c := cache.NovaCache(sistema)
 
-	return &Simulador{Mapa: mapa, Barramento: sistema, Cache: c, CPU: cpu.New(c)}, nil
+	return &Simulador{Mapa: mapa, Barramento: sistema, Cache: c, Teclado: tec, CPU: cpu.New(c)}, nil
 }
-
 // Executar roda a CPU até o programa terminar (ebreak) ou chegar a limitePassos.
 // A cada "intervalo" instruções chama aoIntervalo, que pode ser nil (o intervalo precisa ser maior que 0 para valer).
 // Devolve quantas instruções foram executadas.
