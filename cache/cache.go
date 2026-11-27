@@ -3,13 +3,13 @@ package cache
 import "riscv/barramento"
 
 const (
-	NumLinhas   = 256 // linhas da cache
+	NumLinhas   = 256     // linhas da cache
 	LimiteCache = 0x80000 // só endereços abaixo disto passam pela cache (RAM principal)
 )
 
 // linha é uma posição da cache: guarda uma palavra e de onde ela veio.
 type linha struct {
-	valida bool // false = a linha ainda não foi preenchida
+	valida bool   // false = a linha ainda não foi preenchida
 	tag    uint32 // parte alta do endereço, diz quem é o dono da linha
 	dado   uint32 // a palavra guardada
 }
@@ -20,8 +20,8 @@ type Cache struct {
 	linhas  [NumLinhas]linha
 	destino barramento.Barramento // quem está do outro lado (o barramento do sistema)
 
-	Hits int
-	Misses int 
+	Hits   int
+	Misses int
 }
 
 // NovaCache cria uma cache vazia ligada a um destino.

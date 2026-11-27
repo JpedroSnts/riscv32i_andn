@@ -56,9 +56,9 @@ func TestIndiceETag(t *testing.T) {
 		{0x000, 0, 0},
 		{0x004, 1, 0},
 		{0x100, 64, 0},
-		{0x3FC, 255, 0},    // última linha da primeira volta
-		{0x400, 0, 1},      // 256 palavras depois: volta à linha 0, tag nova
-		{0x500, 64, 1},     // mesma linha que 0x100, tag diferente
+		{0x3FC, 255, 0},     // última linha da primeira volta
+		{0x400, 0, 1},       // 256 palavras depois: volta à linha 0, tag nova
+		{0x500, 64, 1},      // mesma linha que 0x100, tag diferente
 		{0x7FFFC, 255, 511}, // último endereço da RAM
 	}
 
@@ -189,8 +189,8 @@ func TestEscritaEmOutraTagSubstituiALinha(t *testing.T) {
 	c, mem := nova()
 	mem.palavras[0x100] = 1
 
-	c.Read32(0x100)      // miss: linha 64 guarda 0x100
-	c.Write32(0x500, 5)  // mesma linha, tag diferente: miss, expulsa o 0x100
+	c.Read32(0x100)     // miss: linha 64 guarda 0x100
+	c.Write32(0x500, 5) // mesma linha, tag diferente: miss, expulsa o 0x100
 	confere(t, c, 0, 2)
 
 	// 0x100 foi expulso: a leitura é miss e busca na memória
