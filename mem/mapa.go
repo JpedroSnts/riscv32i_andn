@@ -7,9 +7,9 @@ import (
 
 // regiao é um pedaço do mapa de memória.
 type regiao struct {
-	nome        string  // nome só para mensagens de erro (ex.: "VRAM")
-	base        uint32  // primeiro endereço da região
-	tamanho     uint32  // quantos bytes a região ocupa
+	nome        string                // nome só para mensagens de erro (ex.: "VRAM")
+	base        uint32                // primeiro endereço da região
+	tamanho     uint32                // quantos bytes a região ocupa
 	dispositivo barramento.Barramento // quem atende os acessos; nil = reservada (sem dono)
 }
 
@@ -23,7 +23,7 @@ type Mapa struct {
 func (m *Mapa) Adicionar(nome string, base, tamanho uint32, dispositivo barramento.Barramento) error {
 	fim := base + tamanho // primeiro endereço depois da região
 	for _, r := range m.regioes {
-		if base < r.base + r.tamanho && r.base < fim {
+		if base < r.base+r.tamanho && r.base < fim {
 			return fmt.Errorf("região %s se sobrepõe a %s", nome, r.nome)
 		}
 	}
@@ -36,12 +36,12 @@ func (m *Mapa) Adicionar(nome string, base, tamanho uint32, dispositivo barramen
 func (m *Mapa) buscar(endereco uint32) (*regiao, error) {
 	for i := range m.regioes {
 		r := &m.regioes[i]
-	if endereco >= r.base && endereco-r.base < r.tamanho {
+		if endereco >= r.base && endereco-r.base < r.tamanho {
 			return r, nil
 		}
 	}
 	return nil, fmt.Errorf("endereço %#x não está mapeado", endereco)
-}	
+}
 
 // Read32 encaminha a leitura para o dono do endereço.
 func (m *Mapa) Read32(endereco uint32) (uint32, error) {
