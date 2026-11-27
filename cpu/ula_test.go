@@ -56,7 +56,7 @@ func TestULA(t *testing.T) {
 func TestOperacaoR(t *testing.T) {
 	casos := []struct {
 		f3, f7 uint32
-		op operacao
+		op     operacao
 		valido bool
 	}{
 		{0x0, 0x00, opAdd, true},

@@ -8,7 +8,7 @@ import (
 // memoriaFalsa é um Barramento simples: guarda palavras num mapa e pode ser configurada para falhar em endereços específicos.
 type memoriaFalsa struct {
 	palavras map[uint32]uint32
-	falhaEm  map[uint32]bool 
+	falhaEm  map[uint32]bool
 }
 
 // erroFalso é o erro que a memória falsa devolve nas falhas simuladas.
@@ -316,5 +316,198 @@ func TestStepErroBarramento(t *testing.T) {
 	}
 	if cpu.PC != 0 {
 		t.Errorf("sw: PC = %d, deveria continuar 0", cpu.PC)
+	}
+}
+
+// ---------- interrupções ----------
+
+// linhaFalsa é uma linha de interrupção que os testes ligam e desligam.
+type linhaFalsa struct {
+	pedindo bool
+}
+
+func (l *linhaFalsa) Interrupcao() bool {
+	return l.pedindo
+}
+
+const (
+	addiX1 = 0x00500093 // addi x1, x0, 5
+	addiX2 = 0x00100113 // addi x2, x0, 1
+	mret   = 0x30200073
+)
+
+// TestInterrupcaoDesviaParaARotina confere o que acontece ao interromper.
+func TestInterrupcaoDesviaParaARotina(t *testing.T) {
+	cpu, _ := novaCPU(0, addiX1)
+	cpu.LinhaInterrupcao = &linhaFalsa{pedindo: true}
+
+	if err := cpu.Step(); err != nil {
+		t.Fatalf("erro inesperado: %v", err)
+	}
+	if cpu.Regs[1] != 5 {
+		t.Errorf("x1 = %d, a instrução deveria ter terminado antes de interromper", cpu.Regs[1])
+	}
+	if cpu.PC != VetorInterrupcao {
+		t.Errorf("PC = %#x, esperado %#x (a rotina)", cpu.PC, VetorInterrupcao)
+	}
+	if cpu.PCSalvo != 4 {
+		t.Errorf("PCSalvo = %d, esperado 4 (a próxima instrução)", cpu.PCSalvo)
+	}
+	if !cpu.EmTratamento {
+		t.Error("EmTratamento deveria ser true")
+	}
+}
+
+// TestSemInterrupcaoNaoDesvia confere os casos em que nada acontece.
+func TestSemInterrupcaoNaoDesvia(t *testing.T) {
+	// sem linha ligada (nil), como nos testes antigos
+	cpu, _ := novaCPU(0, addiX1)
+	if err := cpu.Step(); err != nil {
+		t.Fatalf("erro inesperado: %v", err)
+	}
+	if cpu.PC != 4 || cpu.EmTratamento {
+		t.Errorf("sem linha: PC = %d, EmTratamento = %v", cpu.PC, cpu.EmTratamento)
+	}
+
+	// linha ligada, mas ninguém pedindo
+	cpu, _ = novaCPU(0, addiX1)
+	cpu.LinhaInterrupcao = &linhaFalsa{pedindo: false}
+	if err := cpu.Step(); err != nil {
+		t.Fatalf("erro inesperado: %v", err)
+	}
+	if cpu.PC != 4 || cpu.EmTratamento {
+		t.Errorf("linha quieta: PC = %d, EmTratamento = %v", cpu.PC, cpu.EmTratamento)
+	}
+}
+
+// TestInterrupcaoNaoAninha confere que, dentro da rotina, novas interrupções esperam.
+func TestInterrupcaoNaoAninha(t *testing.T) {
+	cpu, mem := novaCPU(0, addiX1)
+	mem.palavras[VetorInterrupcao] = addiX2
+	cpu.LinhaInterrupcao = &linhaFalsa{pedindo: true}
+
+	cpu.Step()                         // entra na rotina
+	if err := cpu.Step(); err != nil { // executa uma instrução da rotina
+		t.Fatalf("erro inesperado: %v", err)
+	}
+
+	if cpu.Regs[2] != 1 {
+		t.Errorf("x2 = %d, a rotina deveria ter executado", cpu.Regs[2])
+	}
+	if cpu.PC != VetorInterrupcao+4 {
+		t.Errorf("PC = %#x, esperado %#x (segue na rotina)", cpu.PC, VetorInterrupcao+4)
+	}
+	if cpu.PCSalvo != 4 {
+		t.Errorf("PCSalvo = %d, não deveria ser sobrescrito (esperado 4)", cpu.PCSalvo)
+	}
+}
+
+// TestMretVoltaAoPrograma confere o retorno ao ponto certo.
+func TestMretVoltaAoPrograma(t *testing.T) {
+	cpu, mem := novaCPU(0, addiX1)
+	mem.palavras[VetorInterrupcao] = mret
+	linha := &linhaFalsa{pedindo: true}
+	cpu.LinhaInterrupcao = linha
+
+	cpu.Step()                         // entra na rotina
+	linha.pedindo = false              // a rotina atendeu o pedido
+	if err := cpu.Step(); err != nil { // executa o MRET
+		t.Fatalf("erro inesperado: %v", err)
+	}
+
+	if cpu.PC != 4 {
+		t.Errorf("PC = %d, esperado 4 (onde o programa parou)", cpu.PC)
+	}
+	if cpu.EmTratamento {
+		t.Error("EmTratamento deveria voltar a false")
+	}
+}
+
+// TestInterrupcaoPendenteDepoisDoMret confere que uma interrupção que continua pedindo é tratada logo depois do retorno.
+func TestInterrupcaoPendenteDepoisDoMret(t *testing.T) {
+	cpu, mem := novaCPU(0, addiX1)
+	mem.palavras[VetorInterrupcao] = mret
+	cpu.LinhaInterrupcao = &linhaFalsa{pedindo: true} // nunca para de pedir
+
+	cpu.Step() // entra na rotina
+	cpu.Step() // MRET, e logo interrompe de novo
+
+	if cpu.PC != VetorInterrupcao || !cpu.EmTratamento {
+		t.Errorf("PC = %#x, EmTratamento = %v; esperado uma nova entrada na rotina",
+			cpu.PC, cpu.EmTratamento)
+	}
+	if cpu.PCSalvo != 4 {
+		t.Errorf("PCSalvo = %d, esperado 4 (o programa ainda não avançou)", cpu.PCSalvo)
+	}
+}
+
+// TestMretForaDeRotina confere que o MRET sozinho é uma instrução inválida.
+func TestMretForaDeRotina(t *testing.T) {
+	cpu, _ := novaCPU(0, mret)
+
+	if err := cpu.Step(); err == nil {
+		t.Error("MRET fora de uma rotina deveria dar erro")
+	}
+	if cpu.PC != 0 {
+		t.Errorf("PC = %d, deveria continuar 0", cpu.PC)
+	}
+}
+
+// TestInterrupcaoDepoisDeDesvio confere que o programa volta ao destino do desvio.
+func TestInterrupcaoDepoisDeDesvio(t *testing.T) {
+	cpu, _ := novaCPU(0, 0x00000863) // beq x0, x0, 16: sempre desvia para 16
+	cpu.LinhaInterrupcao = &linhaFalsa{pedindo: true}
+
+	if err := cpu.Step(); err != nil {
+		t.Fatalf("erro inesperado: %v", err)
+	}
+	if cpu.PCSalvo != 16 {
+		t.Errorf("PCSalvo = %d, esperado 16 (o destino do desvio, e não 4)", cpu.PCSalvo)
+	}
+}
+
+// TestErroNaoInterrompe confere que uma instrução que falhou não dispara a rotina.
+func TestErroNaoInterrompe(t *testing.T) {
+	cpu, _ := novaCPU(0, 0x00000000) // opcode inválido
+	cpu.LinhaInterrupcao = &linhaFalsa{pedindo: true}
+
+	if err := cpu.Step(); err == nil {
+		t.Fatal("deveria dar erro")
+	}
+	if cpu.EmTratamento || cpu.PC != 0 {
+		t.Errorf("EmTratamento = %v, PC = %d; a CPU não deveria ter mudado", cpu.EmTratamento, cpu.PC)
+	}
+}
+
+// TestEbreakNaoInterrompe confere que, ao parar, a CPU não entra na rotina.
+func TestEbreakNaoInterrompe(t *testing.T) {
+	cpu, _ := novaCPU(0, 0x00100073) // ebreak
+	cpu.LinhaInterrupcao = &linhaFalsa{pedindo: true}
+
+	if err := cpu.Step(); err != nil {
+		t.Fatalf("erro inesperado: %v", err)
+	}
+	if !cpu.Parou || cpu.EmTratamento || cpu.PC != 0 {
+		t.Errorf("Parou = %v, EmTratamento = %v, PC = %d", cpu.Parou, cpu.EmTratamento, cpu.PC)
+	}
+}
+
+// TestEntrarESairNaoMexeNosRegistradores confere que a CPU não salva nem apaga registradores: isso é trabalho da rotina.
+func TestEntrarESairNaoMexeNosRegistradores(t *testing.T) {
+	cpu, mem := novaCPU(0, addiX1)
+	mem.palavras[VetorInterrupcao] = mret
+	linha := &linhaFalsa{pedindo: true}
+	cpu.LinhaInterrupcao = linha
+	cpu.Regs[5] = 77
+
+	cpu.Step() // entra
+	linha.pedindo = false
+	cpu.Step() // MRET
+
+	if cpu.Regs[5] != 77 {
+		t.Errorf("x5 = %d, esperado 77", cpu.Regs[5])
+	}
+	if cpu.Regs[1] != 5 {
+		t.Errorf("x1 = %d, esperado 5", cpu.Regs[1])
 	}
 }

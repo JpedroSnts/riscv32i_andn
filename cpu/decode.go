@@ -1,42 +1,40 @@
 package cpu
 
-
-func opcode (i uint32) uint32 { return i & 0x7F}
-func rd (i uint32) uint32 {return (i >> 7) & 0x1F}
-func funct3 (i uint32) uint32 {return (i >> 12) & 0x7}
-func rs1 (i uint32) uint32 {return (i >> 15) & 0x1F}
-func rs2 (i uint32) uint32 {return (i >> 20) & 0x1F}
-func funct7 (i uint32) uint32 {return (i >> 25)}
-
+func opcode(i uint32) uint32 { return i & 0x7F }
+func rd(i uint32) uint32     { return (i >> 7) & 0x1F }
+func funct3(i uint32) uint32 { return (i >> 12) & 0x7 }
+func rs1(i uint32) uint32    { return (i >> 15) & 0x1F }
+func rs2(i uint32) uint32    { return (i >> 20) & 0x1F }
+func funct7(i uint32) uint32 { return (i >> 25) }
 
 func immI(i uint32) int32 {
 	return int32(i) >> 20
 }
 
 func immS(i uint32) int32 {
-	return (int32(i) >>25)<<5 | int32((i>>7) &0x1F)
+	return (int32(i)>>25)<<5 | int32((i>>7)&0x1F)
 }
 
 func immB(i uint32) int32 {
-	return (int32(i)>>31)<<12 | 
-		int32((i>>7)&0x1)<<11 | 
+	return (int32(i)>>31)<<12 |
+		int32((i>>7)&0x1)<<11 |
 		int32((i>>25)&0x3F)<<5 |
-		int32((i>>8)&0xF)<<1 
+		int32((i>>8)&0xF)<<1
 }
 
 type instrR struct {
 	rd, rs1, rs2 uint32
-	funct3 		 uint32
-	funct7		 uint32
+	funct3       uint32
+	funct7       uint32
 }
 
-func decodeR (i uint32) instrR {
-	return instrR {
-		rd: 	rd(i),
-		rs1:	rs1(i),
-		rs2:	rs2(i),
-		funct3:	funct3(i),
-		funct7:	funct7(i),	 
+func decodeR(i uint32) instrR {
+	return instrR{
+		rd:     rd(i),
+		rs1:    rs1(i),
+		rs2:    rs2(i),
+		funct3: funct3(i),
+		funct7: funct7(i),
 	}
 }
 
@@ -87,11 +85,11 @@ func operacaoR(f3, f7 uint32) (operacao, bool) {
 	return 0, false
 }
 
-/* 
-
+/*
 Descobre qual operação da ULA uma intrução tipo-I aritmética/lógica (opcode 0010011) pede.
 
 Parâmetros:
+
 	f3: campo funct3 da instrução (bits 14:12)
 	f7: campo funct7 da instrução (bits 31:25); só importa nos shifts
 
@@ -102,7 +100,7 @@ func operacaoI(f3, f7 uint32) (operacao, bool) {
 	switch f3 {
 	case 0x0:
 		return opAdd, true
-	case 0x1: 
+	case 0x1:
 		if f7 == 0x00 {
 			return opSll, true
 		}

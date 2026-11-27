@@ -20,7 +20,7 @@ func TestCamposANDN(t *testing.T) {
 		{"funct7", funct7(instrucao), 0x20}, // 0100000, o que diferencia do AND
 	}
 
-		for _, c := range casos {
+	for _, c := range casos {
 		if c.obtido != c.esperado {
 			t.Errorf("%s = %#x, esperado %#x", c.nome, c.obtido, c.esperado)
 		}

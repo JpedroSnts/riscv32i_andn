@@ -16,14 +16,14 @@ const (
 	opAndn
 )
 
-func ula (op operacao , a , b uint32) uint32{
-	switch op{
+func ula(op operacao, a, b uint32) uint32 {
+	switch op {
 	case opAdd:
 		return a + b
 	case opSub:
 		return a - b
 	case opSll:
-		return a <<(b & 0x1F)
+		return a << (b & 0x1F)
 	case opSlt:
 		if int32(a) < int32(b) {
 			return 1
@@ -35,7 +35,7 @@ func ula (op operacao , a , b uint32) uint32{
 		}
 		return 0
 	case opXor:
-		return a ^ b 
+		return a ^ b
 	case opSrl:
 		return a >> (b & 0x1F)
 	case opSra:

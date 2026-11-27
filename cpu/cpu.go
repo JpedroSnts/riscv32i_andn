@@ -5,25 +5,31 @@ import (
 	"riscv/barramento"
 )
 
+// VetorInterrupcao é o endereço da rotina de tratamento, na RAM.
+const VetorInterrupcao = 0x1000
+
 type CPU struct {
-	Regs[32] uint32
-	PC uint32
+	Regs       [32]uint32
+	PC         uint32
 	Barramento barramento.Barramento
-	Parou bool // vira true quando a CPU executa EBREAK (fim do programa)
+	Parou      bool // vira true quando a CPU executa EBREAK (fim do programa)
+
+	LinhaInterrupcao barramento.FonteInterrupcao // se for nil, a CPU nunca é interrompida
+	PCSalvo          uint32                      // onde o programa foi interrompido
+	EmTratamento     bool                        // true enquanto a rotina de tratamento roda
 }
 
-func New(b barramento.Barramento) * CPU {
+func New(b barramento.Barramento) *CPU {
 	return &CPU{Barramento: b}
 }
 
-func (c * CPU) write(r, v uint32){
+func (c *CPU) write(r, v uint32) {
 	if r != 0 {
 		c.Regs[r] = v
 	}
 }
 
-// Step executa uma instrução. Devolve erro se a instrução for inválida
-// ou não suportada; nesse caso o PC e o estado da CPU não são alterados.
+// Step executa uma instrução. Devolve erro se a instrução for inválida ou não suportada; nesse caso o PC e o estado da CPU não são alterados.
 func (c *CPU) Step() error {
 	inst, err := c.Barramento.Read32(c.PC)
 	if err != nil {
@@ -91,15 +97,30 @@ func (c *CPU) Step() error {
 		if desvio {
 			nextPC = c.PC + uint32(immB(inst))
 		}
-	case 0x73: // EBREAK: fim do programa
-		if inst != 0x00100073 { // só o ebreak é aceito; ecall e outras dão erro
+	case 0x73: // instruções de sistema: EBREAK e MRET
+		switch inst {
+		case 0x00100073: // EBREAK: fim do programa
+			c.Parou = true
+			return nil // o PC não avança, fica apontando para o ebreak
+		case 0x30200073: // MRET: volta da rotina de interrupção
+			if !c.EmTratamento {
+				return c.invalida(inst) // MRET fora de uma rotina é erro
+			}
+			c.EmTratamento = false
+			nextPC = c.PCSalvo
+		default: // ecall e outras não são suportadas
 			return c.invalida(inst)
-		}
-		c.Parou = true
-		return nil // o PC não avança, fica apontando para o ebreak
+		} // fecha o switch inst
 
 	default: // opcode que não implementamos
 		return c.invalida(inst)
+	} // fecha o switch opcode(inst)
+
+	// Depois de executar, verifica se há interrupção (figura 7 do enunciado). Não interrompe se já está numa rotina: interrupções não aninham.
+	if !c.EmTratamento && c.LinhaInterrupcao != nil && c.LinhaInterrupcao.Interrupcao() {
+		c.PCSalvo = nextPC // o programa continuará daqui depois do MRET
+		c.EmTratamento = true
+		nextPC = VetorInterrupcao
 	}
 
 	c.PC = nextPC
