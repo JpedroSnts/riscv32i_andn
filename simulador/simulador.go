@@ -8,12 +8,13 @@ import (
 	"riscv/mem"
 	"riscv/teclado"
 )
+
 // Simulador junta as peças: mapa de memória, barramento e CPU.
 type Simulador struct {
-	Mapa       *mem.Mapa // memória e dispositivos
+	Mapa       *mem.Mapa           // memória e dispositivos
 	Barramento *barramento.Sistema // linhas de endereço, dados, controle e interrupção
-	Cache      *cache.Cache // fica entre a CPU e o barramento
-	Teclado    *teclado.Teclado // o periférico que gera a interrupção
+	Cache      *cache.Cache        // fica entre a CPU e o barramento
+	Teclado    *teclado.Teclado    // o periférico que gera a interrupção
 	CPU        *cpu.CPU
 }
 
@@ -37,8 +38,12 @@ func Novo(programa []uint32) (*Simulador, error) {
 	// a cache fica entre a CPU e o barramento
 	c := cache.NovaCache(sistema)
 
-	return &Simulador{Mapa: mapa, Barramento: sistema, Cache: c, Teclado: tec, CPU: cpu.New(c)}, nil
+	processador := cpu.New(c)
+	processador.LinhaInterrupcao = sistema // a CPU consulta a linha de interrupção do barramento
+
+	return &Simulador{Mapa: mapa, Barramento: sistema, Cache: c, Teclado: tec, CPU: processador}, nil
 }
+
 // Executar roda a CPU até o programa terminar (ebreak) ou chegar a limitePassos.
 // A cada "intervalo" instruções chama aoIntervalo, que pode ser nil (o intervalo precisa ser maior que 0 para valer).
 // Devolve quantas instruções foram executadas.
