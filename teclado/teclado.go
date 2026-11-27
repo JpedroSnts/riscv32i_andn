@@ -9,10 +9,10 @@ import (
 
 // Endereços do teclado, dentro da região de periféricos do enunciado.
 const (
-	Base = 0x9FC00  // início da região de periféricos
-	Tamanho = 0x400 // tamanho da região (até 0x9FFFF)
-	RegStatus = Base + 0x00 // leitura: bit 0 = há tecla pendente
-	RegTecla = Base + 0x04 // leitura: código da tecla; ler limpa a pendência
+	Base        = 0x9FC00     // início da região de periféricos
+	Tamanho     = 0x400       // tamanho da região (até 0x9FFFF)
+	RegStatus   = Base + 0x00 // leitura: bit 0 = há tecla pendente
+	RegTecla    = Base + 0x04 // leitura: código da tecla; ler limpa a pendência
 	RegControle = Base + 0x08 // bit 0 = interrupções habilitadas
 )
 
