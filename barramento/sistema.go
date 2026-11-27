@@ -1,7 +1,7 @@
 package barramento
 
-
 type Controle int
+
 const (
 	Ocioso  Controle = 0 // nenhum acesso em andamento
 	Leitura Controle = 1 // a CPU está lendo da memória
@@ -27,7 +27,7 @@ type Sistema struct {
 	Controle Controle // Leitura, escrita ou ocioso
 
 	destino Barramento
-	fontes  []FonteInterrupcao // dispositivos que podem pedir interrupção 
+	fontes  []FonteInterrupcao // dispositivos que podem pedir interrupção
 }
 
 // FonteInterrupcao é um dispositivo que pode pedir uma interrupção à CPU.
