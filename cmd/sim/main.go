@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"riscv/cpu"
+	"riscv/desempenho"
 	"riscv/programas"
 	"riscv/simulador"
 	"riscv/video"
@@ -20,13 +21,33 @@ func main() {
 		"roda a demonstração da interrupção por teclado (digite i e Enter)")
 	pausa := flag.Duration("pausa", 30*time.Millisecond,
 		"pausa entre as instruções no modo -interrupcao")
+	medir := flag.String("medir", "",
+		"mede o desempenho e guarda a medição no histórico com este rótulo")
+	programa := flag.String("programa", "",
+		"no modo -medir: arquivo com o programa (uma instrução em hexadecimal por linha); o padrão é a soma de vetor")
+	historico := flag.String("historico", desempenho.ArquivoPadrao,
+		"no modo -medir: arquivo do histórico de medições")
+	repeticoes := flag.Int("repeticoes", 5,
+		"no modo -medir: quantas vezes o programa é executado e medido")
 	flag.Parse()
 
-	if *interrupcao {
+	switch {
+	case *medir != "":
+		err := medirDesempenho(os.Stdout, opcoesMedicao{
+			rotulo:     *medir,
+			programa:   *programa,
+			historico:  *historico,
+			repeticoes: *repeticoes,
+		})
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "erro:", err)
+			os.Exit(1)
+		}
+	case *interrupcao:
 		demonstrarInterrupcao(*pausa)
-		return
+	default:
+		demonstrarAlfabeto()
 	}
-	demonstrarAlfabeto()
 }
 
 // demonstrarAlfabeto roda o programa que escreve ABCDEFGH na VRAM com um laço.
