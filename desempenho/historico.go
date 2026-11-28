@@ -64,3 +64,14 @@ func Salvar(caminho string, registro Registro) error {
 	}
 	return os.Rename(temporario, caminho)
 }
+
+// UltimoDoMesmoPrograma devolve o registro mais recente medido com o mesmo programa (mesmo nome e mesma quantidade de instruções), e false se não houver.
+func UltimoDoMesmoPrograma(registros []Registro, r Resultado) (Registro, bool) {
+	for i := len(registros) - 1; i >= 0; i-- {
+		anterior := registros[i].Resultado
+		if anterior.Programa == r.Programa && anterior.Instrucoes == r.Instrucoes {
+			return registros[i], true
+		}
+	}
+	return Registro{}, false
+}

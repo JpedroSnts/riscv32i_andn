@@ -128,3 +128,43 @@ func TestHistoricoSemDataUsaAgora(t *testing.T) {
 		t.Error("não deveria sobrar o arquivo temporário")
 	}
 }
+
+// TestUltimoDoMesmoPrograma confere a busca da medição anterior para comparar.
+func TestUltimoDoMesmoPrograma(t *testing.T) {
+	registro := func(rotulo, programa string, instrucoes int) Registro {
+		return Registro{Rotulo: rotulo, Resultado: Resultado{Programa: programa, Instrucoes: instrucoes}}
+	}
+	registros := []Registro{
+		registro("a", "soma", 100),
+		registro("b", "alfabeto", 57),
+		registro("c", "soma", 100),
+		registro("d", "soma", 200), // mesmo nome, outro tamanho
+		registro("e", "alfabeto", 57),
+	}
+
+	casos := []struct {
+		nome       string
+		programa   string
+		instrucoes int
+		rotulo     string
+		achou      bool
+	}{
+		{"o mais recente do mesmo programa", "soma", 100, "c", true},
+		{"outro programa", "alfabeto", 57, "e", true},
+		{"mesmo nome com outro tamanho", "soma", 200, "d", true},
+		{"programa nunca medido", "outro", 1, "", false},
+		{"mesmo nome, tamanho nunca medido", "soma", 300, "", false},
+	}
+
+	for _, c := range casos {
+		procurado := Resultado{Programa: c.programa, Instrucoes: c.instrucoes}
+		obtido, achou := UltimoDoMesmoPrograma(registros, procurado)
+		if achou != c.achou || obtido.Rotulo != c.rotulo {
+			t.Errorf("%s: rótulo %q, achou %v; esperado %q, %v", c.nome, obtido.Rotulo, achou, c.rotulo, c.achou)
+		}
+	}
+
+	if _, achou := UltimoDoMesmoPrograma(nil, Resultado{Programa: "soma"}); achou {
+		t.Error("um histórico vazio não deveria achar nada")
+	}
+}
