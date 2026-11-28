@@ -14,7 +14,7 @@ type Comparacao struct {
 	VariacaoMissesPct  float64 // em porcentagem dos misses de antes
 	VariacaoTaxaAcerto float64 // em pontos percentuais
 
-	Ruido         float64 // maior oscilação entre o menor e o maior tempo das duas medições, em %
+	Ruido         float64 // maior oscilação (mediana sobre o mínimo) das duas medições, em %
 	DentroDoRuido bool    // a diferença de tempo é menor que o ruído: pode ser sorte
 }
 
@@ -43,10 +43,10 @@ func Comparar(antes, depois Resultado) Comparacao {
 	return c
 }
 
-// ruido é quanto o maior tempo passa do menor, em porcentagem.
+// ruido é quanto a mediana passa do menor tempo, em porcentagem. Usa a mediana e não o maior tempo, porque uma única execução atrapalhada pelo sistema inflaria o ruído e faria qualquer ganho parecer sorte.
 func ruido(r Resultado) float64 {
 	if r.Minimo <= 0 {
 		return 0
 	}
-	return float64(r.Maximo-r.Minimo) / float64(r.Minimo) * 100
+	return float64(r.Mediana-r.Minimo) / float64(r.Minimo) * 100
 }

@@ -33,12 +33,13 @@ func naoContem(t *testing.T, texto string, trechos ...string) {
 }
 
 // medicao monta um Resultado à mão, só com o que a comparação usa.
-func medicao(minimo, maximo time.Duration, hits, misses int) desempenho.Resultado {
+func medicao(minimo, mediana time.Duration, hits, misses int) desempenho.Resultado {
 	r := desempenho.Resultado{
 		Programa:   "teste",
 		Instrucoes: 1000,
 		Minimo:     minimo,
-		Maximo:     maximo,
+		Mediana:    mediana,
+		Maximo:     mediana,
 		Hits:       hits,
 		Misses:     misses,
 	}
@@ -173,8 +174,7 @@ func TestMedirDesempenhoPadrao(t *testing.T) {
 	}
 }
 
-// TestMedirDesempenhoComparaComAAnterior confere que a segunda medição do
-// mesmo programa é comparada com a primeira, e a terceira com a segunda.
+// TestMedirDesempenhoComparaComAAnterior confere que a segunda medição do mesmo programa é comparada com a primeira, e a terceira com a segunda.
 func TestMedirDesempenhoComparaComAAnterior(t *testing.T) {
 	dir := t.TempDir()
 	programa := escreverPrograma(t, dir, programas.Alfabeto)

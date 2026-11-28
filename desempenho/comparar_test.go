@@ -15,12 +15,13 @@ func proximo(a, b float64) bool {
 }
 
 // resultadoDe monta um Resultado à mão, só com o que a comparação usa.
-func resultadoDe(minimo, maximo time.Duration, hits, misses int) Resultado {
+func resultadoDe(minimo, mediana time.Duration, hits, misses int) Resultado {
 	r := Resultado{
 		Programa:   "teste",
 		Instrucoes: 1000,
 		Minimo:     minimo,
-		Maximo:     maximo,
+		Mediana:    mediana,
+		Maximo:     mediana,
 		Hits:       hits,
 		Misses:     misses,
 	}
@@ -162,5 +163,25 @@ func TestCompararComMedicaoReal(t *testing.T) {
 	}
 	if !c.DentroDoRuido {
 		t.Error("uma medição comparada com ela mesma não tem diferença: deveria estar dentro do ruído")
+	}
+}
+
+// TestRuidoIgnoraUmaExecucaoAtrapalhada confere que um único tempo fora da curva não infla o ruído: um ganho real de 15% tem que aparecer como ganho.
+func TestRuidoIgnoraUmaExecucaoAtrapalhada(t *testing.T) {
+	ms := time.Millisecond
+	antes := resultadoDe(100*ms, 102*ms, 800, 200)
+	antes.Maximo = 300 * ms // uma única execução atrapalhada pelo sistema
+	depois := resultadoDe(85*ms, 87*ms, 800, 200)
+
+	c := Comparar(antes, depois)
+
+	if !proximo(c.VariacaoTempoPct, -15) {
+		t.Errorf("VariacaoTempoPct = %v, esperado -15", c.VariacaoTempoPct)
+	}
+	if c.Ruido > 3 {
+		t.Errorf("Ruido = %v, o tempo máximo fora da curva não deveria contar", c.Ruido)
+	}
+	if c.DentroDoRuido {
+		t.Error("um ganho de 15% com ruído de uns 2% não é sorte")
 	}
 }
