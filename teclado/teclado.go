@@ -3,6 +3,7 @@ package teclado
 import (
 	"fmt"
 	"sync"
+	"sync/atomic"
 
 	"riscv/barramento"
 )
@@ -25,6 +26,9 @@ type Teclado struct {
 	tecla      uint32     // código da última tecla de interrupção
 	pendente   bool       // true se a tecla ainda não foi lida
 	habilitada bool       // true se as interrupções estão ligadas
+
+	// linha é uma cópia de (pendente && habilitada), para a CPU consultar a cada instrução sem precisar da trava. Só atualizar() a escreve.
+	linha atomic.Bool
 }
 
 // Novo cria um teclado sem tecla pendente e com interrupções desligadas.
@@ -32,7 +36,13 @@ func Novo() *Teclado {
 	return &Teclado{}
 }
 
-// Pressionar é chamado quando uma tecla é apertada. Só a tecla de interrupção é registrada; as outras são ignoradas.
+// atualizar recalcula a linha de interrupção. Precisa ser chamada, com a trava, sempre que pendente ou habilitada mudar.
+func (t *Teclado) atualizar() {
+	t.linha.Store(t.pendente && t.habilitada)
+}
+
+// Pressionar é chamado quando uma tecla é apertada.
+// Só a tecla de interrupção é registrada; as outras são ignoradas.
 func (t *Teclado) Pressionar(tecla byte) {
 	if tecla != TeclaInterrupcao {
 		return
@@ -41,13 +51,12 @@ func (t *Teclado) Pressionar(tecla byte) {
 	defer t.mu.Unlock()
 	t.tecla = uint32(tecla)
 	t.pendente = true
+	t.atualizar()
 }
 
-// Interrupcao é a linha de interrupção: true se há tecla pendente e as interrupções estão habilitadas.
+// Interrupcao é a linha de interrupção: true se há tecla pendente e as interrupções estão habilitadas. Não usa a trava: a CPU a consulta depois de cada instrução, e travar ali custava mais da metade do tempo.
 func (t *Teclado) Interrupcao() bool {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-	return t.pendente && t.habilitada
+	return t.linha.Load()
 }
 
 // Read32 lê um dos registradores do teclado.
@@ -60,6 +69,7 @@ func (t *Teclado) Read32(endereco uint32) (uint32, error) {
 		return booleano(t.pendente), nil
 	case RegTecla:
 		t.pendente = false // ler a tecla limpa a pendência
+		t.atualizar()
 		return t.tecla, nil
 	case RegControle:
 		return booleano(t.habilitada), nil
@@ -75,6 +85,7 @@ func (t *Teclado) Write32(endereco uint32, valor uint32) error {
 	switch endereco {
 	case RegControle:
 		t.habilitada = valor&1 == 1 // só o bit 0 conta
+		t.atualizar()
 		return nil
 	case RegStatus, RegTecla:
 		return fmt.Errorf("teclado: o registrador %#x é somente leitura", endereco)
@@ -90,6 +101,6 @@ func booleano(b bool) uint32 {
 	return 0
 }
 
-// O compilador confere que o Teclado é um Barramento (pode ser ligado ao mapa).
+// O compilador confere que o Teclado é um Barramento (pode ser ligado ao mapa) e uma fonte de interrupção (pode ser registrado no barramento do sistema).
 var _ barramento.Barramento = (*Teclado)(nil)
 var _ barramento.FonteInterrupcao = (*Teclado)(nil)

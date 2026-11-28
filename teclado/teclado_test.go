@@ -1,6 +1,10 @@
 package teclado
 
-import "testing"
+import (
+	"math/rand"
+	"testing"
+	"time"
+)
 
 // ler lê um registrador e falha o teste se der erro.
 func ler(t *testing.T, k *Teclado, endereco uint32) uint32 {
@@ -220,5 +224,50 @@ func TestEnderecosDosRegistradores(t *testing.T) {
 	}
 	if Base+Tamanho != 0xA0000 {
 		t.Errorf("a região termina em %#x, esperado 0xA0000", Base+Tamanho)
+	}
+}
+
+// TestLinhaConsistenteComOEstado confere que a linha de interrupção, que a CPU consulta sem travar, acompanha sempre o estado real do teclado. Faz dez mil operações em ordem sorteada (sempre a mesma, por causa da semente fixa).
+func TestLinhaConsistenteComOEstado(t *testing.T) {
+	k := Novo()
+	sorteio := rand.New(rand.NewSource(42))
+
+	for i := 0; i < 10000; i++ {
+		switch sorteio.Intn(5) {
+		case 0:
+			k.Pressionar('i')
+		case 1:
+			k.Pressionar('a') // ignorada
+		case 2:
+			ler(t, k, RegTecla) // limpa a pendência
+		case 3:
+			escrever(t, k, RegControle, uint32(sorteio.Intn(2)))
+		case 4:
+			ler(t, k, RegStatus) // consultar não muda nada
+		}
+
+		k.mu.Lock()
+		esperado := k.pendente && k.habilitada
+		k.mu.Unlock()
+		if obtido := k.Interrupcao(); obtido != esperado {
+			t.Fatalf("operação %d: Interrupcao() = %v, esperado %v", i, obtido, esperado)
+		}
+	}
+}
+
+// TestInterrupcaoNaoUsaATrava confere a propriedade que torna a consulta rápida: com a trava ocupada por outra goroutine, a consulta responde mesmo assim.
+func TestInterrupcaoNaoUsaATrava(t *testing.T) {
+	k := Novo()
+
+	k.mu.Lock() // simula outra goroutine no meio de uma operação
+	defer k.mu.Unlock()
+
+	resposta := make(chan bool)
+	go func() { resposta <- k.Interrupcao() }()
+
+	select {
+	case <-resposta:
+	case <-time.After(time.Second):
+		t.Fatal("Interrupcao() ficou esperando a trava: a consulta voltou a ser lenta")
 	}
 }

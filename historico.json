@@ -175,5 +175,64 @@
       ],
       "Falhas": null
     }
+  },
+  {
+    "rotulo": "sem trava na consulta do teclado",
+    "data": "2026-11-28T08:44:17.3220449-03:00",
+    "resultado": {
+      "Programa": "Soma de vetor",
+      "Repeticoes": 5,
+      "Duracoes": [
+        1583800,
+        2149300,
+        1704000,
+        1525000,
+        1228800
+      ],
+      "Minimo": 1228800,
+      "Mediana": 1583800,
+      "Maximo": 2149300,
+      "Instrucoes": 129432,
+      "NsPorInstr": 9.493788244020026,
+      "MIPS": 105.33203125,
+      "Hits": 153207,
+      "Misses": 2081,
+      "TaxaAcerto": 0.9865990932976147,
+      "Registradores": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        8192,
+        256,
+        256,
+        9216,
+        3289600,
+        0,
+        256,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "Falhas": null
+    }
   }
 ]
